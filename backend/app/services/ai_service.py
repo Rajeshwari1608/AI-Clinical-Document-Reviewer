@@ -1,5 +1,3 @@
-import json
-
 from google import genai
 
 from backend.app.core.config import settings
@@ -81,20 +79,22 @@ Clinical document:
                     "Gemini returned an empty response."
                 )
 
-            return ClinicalReport.model_validate_json(
+            report = ClinicalReport.model_validate_json(
                 interaction.output_text
             )
 
-            report.medications = list(
-                {
-                    (
-                        medication.name.lower(),
-                        (medication.dosage or "").lower(),
-                        (medication.frequency or "").lower(),
-                    ): medication
-                    for medication in report.medications
-                }.values()
-            )
+            # Remove duplicate medications while preserving
+            # the first occurrence.
+            unique_medications = {}
+            for medication in report.medications:
+                key = (
+                    medication.name.lower(),
+                    (medication.dosage or "").lower(),
+                    (medication.frequency or "").lower(),
+                )
+                unique_medications[key] = medication
+
+            report.medications = list(unique_medications.values())
 
             return report
 
@@ -103,5 +103,5 @@ Clinical document:
 
         except Exception as error:
             raise RuntimeError(
-                "Gemini clinical analysis failed."
+                f"Gemini clinical analysis failed: {error}"
             ) from error
