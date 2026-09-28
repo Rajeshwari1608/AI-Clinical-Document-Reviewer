@@ -5,3 +5,6 @@ pydantic
 pydantic-settings
 sqlalchemy
 python-dotenv
+pytest
+pypdf
+reportlab
