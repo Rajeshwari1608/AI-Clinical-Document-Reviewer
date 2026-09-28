@@ -33,24 +33,31 @@ def analyze_text(
     request: TextAnalysisRequest,
     db: Session = Depends(get_db)
 ):
+    analysis = Analysis(
+        source_type="text",
+        status="processing"
+    )
+
+    db.add(analysis)
+    db.commit()
+    db.refresh(analysis)
+
     try:
         processed_text = document_processor.process_text(
             request.text
         )
 
+        analysis.extracted_text = processed_text
+
         report = ai_service.analyze_document(
             processed_text
         )
 
-        analysis = Analysis(
-            source_type="text",
-            status="completed",
-            summary=report.report_summary,
-            report_json=report.model_dump_json(),
-            extracted_text=processed_text
-        )
+        analysis.status = "completed"
+        analysis.summary = report.report_summary
+        analysis.report_json = report.model_dump_json()
+        analysis.error_message = None
 
-        db.add(analysis)
         db.commit()
         db.refresh(analysis)
 
@@ -63,15 +70,39 @@ def analyze_text(
         }
 
     except ValueError as error:
+        analysis.status = "failed"
+        analysis.error_message = str(error)
+
+        db.commit()
+
         raise HTTPException(
             status_code=400,
             detail=str(error)
         )
 
     except RuntimeError as error:
+        analysis.status = "failed"
+        analysis.error_message = str(error)
+
+        db.commit()
+
         raise HTTPException(
             status_code=502,
             detail=str(error)
+        )
+
+    except Exception as error:
+        db.rollback()
+
+        analysis.status = "failed"
+        analysis.error_message = "Unexpected analysis failure."
+
+        db.add(analysis)
+        db.commit()
+
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during analysis."
         )
 
 
@@ -103,6 +134,16 @@ async def analyze_image(
             detail="Unsupported image format."
         )
 
+    analysis = Analysis(
+        source_type="image",
+        filename=file.filename,
+        status="processing"
+    )
+
+    db.add(analysis)
+    db.commit()
+    db.refresh(analysis)
+
     upload_path = None
 
     try:
@@ -111,6 +152,10 @@ async def analyze_image(
         contents = await file.read()
 
         if not contents:
+            analysis.status = "failed"
+            analysis.error_message = "Uploaded image is empty."
+            db.commit()
+
             raise HTTPException(
                 status_code=400,
                 detail="Uploaded image is empty."
@@ -127,20 +172,17 @@ async def analyze_image(
             extracted_text
         )
 
+        analysis.extracted_text = processed_text
+
         report = ai_service.analyze_document(
             processed_text
         )
 
-        analysis = Analysis(
-            source_type="image",
-            filename=file.filename,
-            status="completed",
-            summary=report.report_summary,
-            report_json=report.model_dump_json(),
-            extracted_text=processed_text
-        )
+        analysis.status = "completed"
+        analysis.summary = report.report_summary
+        analysis.report_json = report.model_dump_json()
+        analysis.error_message = None
 
-        db.add(analysis)
         db.commit()
         db.refresh(analysis)
 
@@ -153,19 +195,48 @@ async def analyze_image(
             "report": report.model_dump()
         }
 
-    except HTTPException:
+    except HTTPException as error:
+        if analysis.status != "failed":
+            analysis.status = "failed"
+            analysis.error_message = str(error.detail)
+            db.commit()
+
         raise
 
     except ValueError as error:
+        analysis.status = "failed"
+        analysis.error_message = str(error)
+
+        db.commit()
+
         raise HTTPException(
             status_code=400,
             detail=str(error)
         )
 
     except RuntimeError as error:
+        analysis.status = "failed"
+        analysis.error_message = str(error)
+
+        db.commit()
+
         raise HTTPException(
             status_code=502,
             detail=str(error)
+        )
+
+    except Exception:
+        db.rollback()
+
+        analysis.status = "failed"
+        analysis.error_message = "Unexpected analysis failure."
+
+        db.add(analysis)
+        db.commit()
+
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during analysis."
         )
 
     finally:
@@ -192,6 +263,16 @@ async def analyze_pdf(
             detail="Unsupported file format. Please upload a PDF."
         )
 
+    analysis = Analysis(
+        source_type="pdf",
+        filename=file.filename,
+        status="processing"
+    )
+
+    db.add(analysis)
+    db.commit()
+    db.refresh(analysis)
+
     upload_path = None
 
     try:
@@ -200,6 +281,10 @@ async def analyze_pdf(
         contents = await file.read()
 
         if not contents:
+            analysis.status = "failed"
+            analysis.error_message = "Uploaded PDF is empty."
+            db.commit()
+
             raise HTTPException(
                 status_code=400,
                 detail="Uploaded PDF is empty."
@@ -216,20 +301,17 @@ async def analyze_pdf(
             extracted_text
         )
 
+        analysis.extracted_text = processed_text
+
         report = ai_service.analyze_document(
             processed_text
         )
 
-        analysis = Analysis(
-            source_type="pdf",
-            filename=file.filename,
-            status="completed",
-            summary=report.report_summary,
-            report_json=report.model_dump_json(),
-            extracted_text=processed_text
-        )
+        analysis.status = "completed"
+        analysis.summary = report.report_summary
+        analysis.report_json = report.model_dump_json()
+        analysis.error_message = None
 
-        db.add(analysis)
         db.commit()
         db.refresh(analysis)
 
@@ -242,19 +324,48 @@ async def analyze_pdf(
             "report": report.model_dump()
         }
 
-    except HTTPException:
+    except HTTPException as error:
+        if analysis.status != "failed":
+            analysis.status = "failed"
+            analysis.error_message = str(error.detail)
+            db.commit()
+
         raise
 
     except ValueError as error:
+        analysis.status = "failed"
+        analysis.error_message = str(error)
+
+        db.commit()
+
         raise HTTPException(
             status_code=400,
             detail=str(error)
         )
 
     except RuntimeError as error:
+        analysis.status = "failed"
+        analysis.error_message = str(error)
+
+        db.commit()
+
         raise HTTPException(
             status_code=502,
             detail=str(error)
+        )
+
+    except Exception:
+        db.rollback()
+
+        analysis.status = "failed"
+        analysis.error_message = "Unexpected analysis failure."
+
+        db.add(analysis)
+        db.commit()
+
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during analysis."
         )
 
     finally:
@@ -283,6 +394,7 @@ def get_analysis_history(
                 "status": analysis.status,
                 "summary": analysis.summary,
                 "created_at": analysis.created_at,
+                "error_message": analysis.error_message,
             }
             for analysis in analyses
         ],
