@@ -1,15 +1,31 @@
+import os
 from pathlib import Path
 
 import pytesseract
 from PIL import Image
 
 
-TESSERACT_PATH = Path(
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+def configure_tesseract() -> None:
+    """Configure Tesseract for local Windows and deployed environments."""
 
-if TESSERACT_PATH.exists():
-    pytesseract.pytesseract.tesseract_cmd = str(TESSERACT_PATH)
+    configured_path = os.getenv("TESSERACT_CMD")
+
+    if configured_path and Path(configured_path).exists():
+        pytesseract.pytesseract.tesseract_cmd = configured_path
+        return
+
+    windows_path = Path(
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    )
+
+    if windows_path.exists():
+        pytesseract.pytesseract.tesseract_cmd = str(windows_path)
+        return
+
+    pytesseract.pytesseract.tesseract_cmd = "tesseract"
+
+
+configure_tesseract()
 
 
 class OCRService:
