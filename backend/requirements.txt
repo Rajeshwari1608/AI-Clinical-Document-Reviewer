@@ -13,3 +13,5 @@ pytesseract
 pillow
 PyMuPDF
 "@ | Set-Content backend\requirements.txtPyMuPDF
+google-genai
+
