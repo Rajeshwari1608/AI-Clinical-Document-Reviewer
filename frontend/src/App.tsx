@@ -83,6 +83,8 @@ function App() {
       );
 
       setHistory(response.data.reports ?? []);
+
+      setError("");
     } catch (requestError: unknown) {
       console.error("History request failed:", requestError);
       setError("Unable to load previous reports.");
@@ -242,17 +244,28 @@ function App() {
     <div className="app">
       <header className="header">
         <div>
+          <p className="eyebrow">AI / CLINICAL DOCUMENT ANALYSIS</p>
+
           <h1>AI Clinical Document Reviewer</h1>
-          <p>
+
+          <p className="subtitle">
             Upload or enter a clinical document to generate a
             structured clinical review.
           </p>
         </div>
       </header>
 
-      <main className="container">
+      <main className="main-container">
         <section className="card">
-          <h2>Analyze Clinical Document</h2>
+          <div className="section-heading">
+            <div>
+              <h2>Analyze Clinical Document</h2>
+
+              <p>
+                Enter clinical text or upload an image/PDF document.
+              </p>
+            </div>
+          </div>
 
           <label htmlFor="clinical-text">
             Clinical text
@@ -271,7 +284,7 @@ function App() {
             rows={10}
           />
 
-          <div className="divider">
+          <div className="or-divider">
             <span>OR</span>
           </div>
 
@@ -287,12 +300,16 @@ function App() {
           />
 
           {selectedFile && (
-            <p className="file-name">
+            <p className="selected-file">
               Selected file: <strong>{selectedFile.name}</strong>
             </p>
           )}
 
-          {error && <div className="error">{error}</div>}
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
 
           <div className="button-row">
             <button
@@ -317,7 +334,7 @@ function App() {
           <section className="card report-card">
             <h2>Clinical Review Report</h2>
 
-            <div className="report-section summary-section">
+            <div className="summary-box">
               <h3>Report Summary</h3>
               <p>{report.report_summary}</p>
             </div>
@@ -342,32 +359,32 @@ function App() {
               <h3>Patient Information</h3>
 
               <div className="info-grid">
-                <div>
-                  <strong>Name</strong>
-                  <span>
+                <div className="info-item">
+                  <span>Name</span>
+                  <strong>
                     {report.patient_info.name || "Not available"}
-                  </span>
+                  </strong>
                 </div>
 
-                <div>
-                  <strong>Age</strong>
-                  <span>
+                <div className="info-item">
+                  <span>Age</span>
+                  <strong>
                     {report.patient_info.age || "Not available"}
-                  </span>
+                  </strong>
                 </div>
 
-                <div>
-                  <strong>Gender</strong>
-                  <span>
+                <div className="info-item">
+                  <span>Gender</span>
+                  <strong>
                     {report.patient_info.gender || "Not available"}
-                  </span>
+                  </strong>
                 </div>
 
-                <div>
-                  <strong>Date</strong>
-                  <span>
+                <div className="info-item">
+                  <span>Date</span>
+                  <strong>
                     {report.patient_info.date || "Not available"}
-                  </span>
+                  </strong>
                 </div>
               </div>
             </div>
@@ -376,15 +393,17 @@ function App() {
               <h3>Symptoms</h3>
 
               {report.symptoms.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.symptoms.map((symptom, index) => (
-                    <li key={index}>
+                    <div className="report-item" key={index}>
                       <strong>{symptom.name}</strong>
-                      {symptom.details &&
-                        ` — ${symptom.details}`}
-                    </li>
+
+                      {symptom.details && (
+                        <p>{symptom.details}</p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No symptoms identified.
@@ -396,15 +415,17 @@ function App() {
               <h3>Diagnoses / Conditions</h3>
 
               {report.diagnoses.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.diagnoses.map((diagnosis, index) => (
-                    <li key={index}>
+                    <div className="report-item" key={index}>
                       <strong>{diagnosis.condition}</strong>
-                      {diagnosis.details &&
-                        ` — ${diagnosis.details}`}
-                    </li>
+
+                      {diagnosis.details && (
+                        <p>{diagnosis.details}</p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No diagnoses identified.
@@ -416,19 +437,27 @@ function App() {
               <h3>Medications</h3>
 
               {report.medications.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.medications.map((medication, index) => (
-                    <li key={index}>
+                    <div className="report-item" key={index}>
                       <strong>{medication.name}</strong>
-                      {medication.dosage &&
-                        ` — ${medication.dosage}`}
-                      {medication.frequency &&
-                        `, ${medication.frequency}`}
-                      {medication.details &&
-                        ` — ${medication.details}`}
-                    </li>
+
+                      {medication.dosage && (
+                        <p>Dosage: {medication.dosage}</p>
+                      )}
+
+                      {medication.frequency && (
+                        <p>
+                          Frequency: {medication.frequency}
+                        </p>
+                      )}
+
+                      {medication.details && (
+                        <p>{medication.details}</p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No medications identified.
@@ -442,12 +471,13 @@ function App() {
               {report.vitals.length > 0 ? (
                 <div className="info-grid">
                   {report.vitals.map((vital, index) => (
-                    <div key={index}>
-                      <strong>{vital.name}</strong>
-                      <span>
+                    <div className="info-item" key={index}>
+                      <span>{vital.name}</span>
+
+                      <strong>
                         {vital.value || "Not available"}
                         {vital.unit ? ` ${vital.unit}` : ""}
-                      </span>
+                      </strong>
                     </div>
                   ))}
                 </div>
@@ -478,19 +508,21 @@ function App() {
               <h3>Observations</h3>
 
               {report.observations.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.observations.map(
                     (observation, index) => (
-                      <li key={index}>
+                      <div className="report-item" key={index}>
                         <strong>
                           {observation.observation}
                         </strong>
-                        {observation.details &&
-                          ` — ${observation.details}`}
-                      </li>
+
+                        {observation.details && (
+                          <p>{observation.details}</p>
+                        )}
+                      </div>
                     )
                   )}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No additional observations identified.
@@ -502,15 +534,17 @@ function App() {
               <h3>Concerns</h3>
 
               {report.concerns.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.concerns.map((concern, index) => (
-                    <li key={index}>
+                    <div className="report-item" key={index}>
                       <strong>{concern.concern}</strong>
-                      {concern.details &&
-                        ` — ${concern.details}`}
-                    </li>
+
+                      {concern.details && (
+                        <p>{concern.details}</p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No concerns identified.
@@ -522,17 +556,19 @@ function App() {
               <h3>Missing / Incomplete Information</h3>
 
               {report.missing_information.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.missing_information.map(
                     (item, index) => (
-                      <li key={index}>
+                      <div className="report-item" key={index}>
                         <strong>{item.field}</strong>
-                        {item.details &&
-                          ` — ${item.details}`}
-                      </li>
+
+                        {item.details && (
+                          <p>{item.details}</p>
+                        )}
+                      </div>
                     )
                   )}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No missing information identified.
@@ -544,17 +580,19 @@ function App() {
               <h3>Inconsistencies</h3>
 
               {report.inconsistencies.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.inconsistencies.map(
                     (item, index) => (
-                      <li key={index}>
+                      <div className="report-item" key={index}>
                         <strong>{item.issue}</strong>
-                        {item.details &&
-                          ` — ${item.details}`}
-                      </li>
+
+                        {item.details && (
+                          <p>{item.details}</p>
+                        )}
+                      </div>
                     )
                   )}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No inconsistencies identified.
@@ -566,15 +604,17 @@ function App() {
               <h3>Review Items</h3>
 
               {report.review_items.length > 0 ? (
-                <ul>
+                <div className="item-list">
                   {report.review_items.map((item, index) => (
-                    <li key={index}>
+                    <div className="report-item" key={index}>
                       <strong>{item.item}</strong>
-                      {item.details &&
-                        ` — ${item.details}`}
-                    </li>
+
+                      {item.details && (
+                        <p>{item.details}</p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="muted">
                   No additional review items identified.
@@ -584,9 +624,11 @@ function App() {
           </section>
         )}
 
-        <section className="card">
-          <div className="section-header">
-            <h2>Previous Reports</h2>
+        <section className="card history-card">
+          <div className="history-header">
+            <div>
+              <h2>Previous Reports</h2>
+            </div>
 
             <button
               className="small-button"
@@ -598,7 +640,7 @@ function App() {
           </div>
 
           {history.length === 0 ? (
-            <p className="muted">
+            <p className="empty-state">
               No previous analyses available.
             </p>
           ) : (
@@ -611,7 +653,7 @@ function App() {
                     openPreviousReport(item.analysis_id)
                   }
                 >
-                  <div className="history-main">
+                  <div>
                     <strong>
                       {item.filename ||
                         `${item.source_type} analysis`}
@@ -622,21 +664,17 @@ function App() {
                         item.created_at
                       ).toLocaleString()}
                     </span>
-                  </div>
-
-                  <div className="history-meta">
-                    <span
-                      className={`status ${item.status}`}
-                    >
-                      {item.status}
-                    </span>
 
                     {item.summary && (
-                      <span className="history-summary">
-                        {item.summary}
-                      </span>
+                      <small>{item.summary}</small>
                     )}
                   </div>
+
+                  <span
+                    className={`status ${item.status}`}
+                  >
+                    {item.status}
+                  </span>
                 </button>
               ))}
             </div>
