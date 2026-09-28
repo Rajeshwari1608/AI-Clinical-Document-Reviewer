@@ -1,8 +1,12 @@
+import json
 import os
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from backend.app.core.database import get_db
+from backend.app.models.analysis import Analysis
 from backend.app.services.ai_service import AIService
 from backend.app.services.document_processor import DocumentProcessor
 from backend.app.services.ocr_service import OCRService
@@ -25,7 +29,10 @@ class TextAnalysisRequest(BaseModel):
 
 
 @router.post("/text")
-def analyze_text(request: TextAnalysisRequest):
+def analyze_text(
+    request: TextAnalysisRequest,
+    db: Session = Depends(get_db)
+):
     try:
         processed_text = document_processor.process_text(
             request.text
@@ -35,9 +42,22 @@ def analyze_text(request: TextAnalysisRequest):
             processed_text
         )
 
+        analysis = Analysis(
+            source_type="text",
+            status="completed",
+            summary=report.report_summary,
+            report_json=report.model_dump_json(),
+            extracted_text=processed_text
+        )
+
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+
         return {
             "status": "success",
             "source_type": "text",
+            "analysis_id": analysis.id,
             "extracted_text": processed_text,
             "report": report.model_dump()
         }
@@ -57,7 +77,8 @@ def analyze_text(request: TextAnalysisRequest):
 
 @router.post("/image")
 async def analyze_image(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
 ):
     if not file.filename:
         raise HTTPException(
@@ -110,9 +131,23 @@ async def analyze_image(
             processed_text
         )
 
+        analysis = Analysis(
+            source_type="image",
+            filename=file.filename,
+            status="completed",
+            summary=report.report_summary,
+            report_json=report.model_dump_json(),
+            extracted_text=processed_text
+        )
+
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+
         return {
             "status": "success",
             "source_type": "image",
+            "analysis_id": analysis.id,
             "filename": file.filename,
             "extracted_text": processed_text,
             "report": report.model_dump()
@@ -140,7 +175,8 @@ async def analyze_image(
 
 @router.post("/pdf")
 async def analyze_pdf(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
 ):
     if not file.filename:
         raise HTTPException(
@@ -184,9 +220,23 @@ async def analyze_pdf(
             processed_text
         )
 
+        analysis = Analysis(
+            source_type="pdf",
+            filename=file.filename,
+            status="completed",
+            summary=report.report_summary,
+            report_json=report.model_dump_json(),
+            extracted_text=processed_text
+        )
+
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+
         return {
             "status": "success",
             "source_type": "pdf",
+            "analysis_id": analysis.id,
             "filename": file.filename,
             "extracted_text": processed_text,
             "report": report.model_dump()
@@ -210,3 +260,72 @@ async def analyze_pdf(
     finally:
         if upload_path and os.path.exists(upload_path):
             os.remove(upload_path)
+
+
+@router.get("/history")
+def get_analysis_history(
+    db: Session = Depends(get_db)
+):
+    analyses = (
+        db.query(Analysis)
+        .order_by(Analysis.created_at.desc())
+        .all()
+    )
+
+    return {
+        "status": "success",
+        "count": len(analyses),
+        "reports": [
+            {
+                "analysis_id": analysis.id,
+                "source_type": analysis.source_type,
+                "filename": analysis.filename,
+                "status": analysis.status,
+                "summary": analysis.summary,
+                "created_at": analysis.created_at,
+            }
+            for analysis in analyses
+        ],
+    }
+
+
+@router.get("/history/{analysis_id}")
+def get_analysis_report(
+    analysis_id: int,
+    db: Session = Depends(get_db)
+):
+    analysis = (
+        db.query(Analysis)
+        .filter(Analysis.id == analysis_id)
+        .first()
+    )
+
+    if not analysis:
+        raise HTTPException(
+            status_code=404,
+            detail="Analysis report not found."
+        )
+
+    report = None
+
+    if analysis.report_json:
+        try:
+            report = json.loads(analysis.report_json)
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=500,
+                detail="Stored clinical report is invalid."
+            )
+
+    return {
+        "status": "success",
+        "analysis_id": analysis.id,
+        "source_type": analysis.source_type,
+        "filename": analysis.filename,
+        "analysis_status": analysis.status,
+        "summary": analysis.summary,
+        "extracted_text": analysis.extracted_text,
+        "created_at": analysis.created_at,
+        "report": report,
+        "error_message": analysis.error_message,
+    }
