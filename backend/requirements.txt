@@ -1,3 +1,4 @@
+@"
 fastapi
 uvicorn[standard]
 python-multipart
@@ -8,3 +9,7 @@ python-dotenv
 pytest
 pypdf
 reportlab
+pytesseract
+pillow
+pdf2image
+"@ | Set-Content backend\requirements.txt
