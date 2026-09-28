@@ -4,6 +4,7 @@ from backend.app.api.routes.analysis import (
     TextAnalysisRequest,
     analyze_text,
     analyze_image,
+    analyze_pdf,
 )
 from backend.app.schemas.report_schema import ClinicalReport
 
@@ -146,6 +147,68 @@ def test_image_analysis_api_success(monkeypatch):
         assert result["filename"] == "test.png"
         assert result["report"]["report_summary"] == (
             "Test image clinical report."
+        )
+
+    asyncio.run(run_test())
+
+
+def test_pdf_analysis_api_success(monkeypatch):
+    fake_report = ClinicalReport(
+        report_summary="Test PDF clinical report.",
+        primary_concerns=["Fever"],
+        patient_info={
+            "name": "Ananya Kumar",
+            "age": "45",
+            "gender": None,
+            "date": None,
+        },
+        symptoms=[
+            {
+                "name": "Fever",
+                "details": "for three days",
+            }
+        ],
+        diagnoses=[],
+        medications=[],
+        vitals=[],
+        allergies=["No known allergies reported"],
+        observations=[],
+        concerns=[],
+        missing_information=[],
+        inconsistencies=[],
+        review_items=[],
+    )
+
+    def fake_extract_text(file_path):
+        return "Patient Name: Ananya Kumar. Age: 45. Symptoms: Fever."
+
+    def fake_analyze_document(text):
+        return fake_report
+
+    monkeypatch.setattr(
+        "backend.app.api.routes.analysis.pdf_processor.extract_text",
+        fake_extract_text,
+    )
+
+    monkeypatch.setattr(
+        "backend.app.api.routes.analysis.ai_service.analyze_document",
+        fake_analyze_document,
+    )
+
+    class FakeFile:
+        filename = "test.pdf"
+
+        async def read(self):
+            return b"fake pdf content"
+
+    async def run_test():
+        result = await analyze_pdf(FakeFile())
+
+        assert result["status"] == "success"
+        assert result["source_type"] == "pdf"
+        assert result["filename"] == "test.pdf"
+        assert result["report"]["report_summary"] == (
+            "Test PDF clinical report."
         )
 
     asyncio.run(run_test())
