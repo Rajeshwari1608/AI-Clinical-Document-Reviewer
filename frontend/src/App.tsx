@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 type Report = {
   report_summary: string;
@@ -83,7 +84,6 @@ function App() {
       );
 
       setHistory(response.data.reports ?? []);
-
       setError("");
     } catch (requestError: unknown) {
       console.error("History request failed:", requestError);
@@ -267,9 +267,7 @@ function App() {
             </div>
           </div>
 
-          <label htmlFor="clinical-text">
-            Clinical text
-          </label>
+          <label htmlFor="clinical-text">Clinical text</label>
 
           <textarea
             id="clinical-text"
@@ -288,9 +286,7 @@ function App() {
             <span>OR</span>
           </div>
 
-          <label htmlFor="file-upload">
-            Upload document
-          </label>
+          <label htmlFor="file-upload">Upload document</label>
 
           <input
             id="file-upload"
