@@ -1,6 +1,9 @@
+import asyncio
+
 from backend.app.api.routes.analysis import (
     TextAnalysisRequest,
     analyze_text,
+    analyze_image,
 )
 from backend.app.schemas.report_schema import ClinicalReport
 
@@ -84,3 +87,65 @@ def test_text_analysis_api_handles_ai_failure(monkeypatch):
     except Exception as error:
         assert error.status_code == 502
         assert error.detail == "Gemini clinical analysis failed."
+
+
+def test_image_analysis_api_success(monkeypatch):
+    fake_report = ClinicalReport(
+        report_summary="Test image clinical report.",
+        primary_concerns=["Fever"],
+        patient_info={
+            "name": "Ananya Kumar",
+            "age": "45",
+            "gender": None,
+            "date": None,
+        },
+        symptoms=[
+            {
+                "name": "Fever",
+                "details": "for three days",
+            }
+        ],
+        diagnoses=[],
+        medications=[],
+        vitals=[],
+        allergies=["No known allergies reported"],
+        observations=[],
+        concerns=[],
+        missing_information=[],
+        inconsistencies=[],
+        review_items=[],
+    )
+
+    def fake_extract_text(file_path):
+        return "Patient Name: Ananya Kumar. Age: 45. Symptoms: Fever."
+
+    def fake_analyze_document(text):
+        return fake_report
+
+    monkeypatch.setattr(
+        "backend.app.api.routes.analysis.ocr_service.extract_text",
+        fake_extract_text,
+    )
+
+    monkeypatch.setattr(
+        "backend.app.api.routes.analysis.ai_service.analyze_document",
+        fake_analyze_document,
+    )
+
+    class FakeFile:
+        filename = "test.png"
+
+        async def read(self):
+            return b"fake image content"
+
+    async def run_test():
+        result = await analyze_image(FakeFile())
+
+        assert result["status"] == "success"
+        assert result["source_type"] == "image"
+        assert result["filename"] == "test.png"
+        assert result["report"]["report_summary"] == (
+            "Test image clinical report."
+        )
+
+    asyncio.run(run_test())
