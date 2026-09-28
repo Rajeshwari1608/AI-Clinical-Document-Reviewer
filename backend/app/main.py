@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,13 +14,24 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="AI Clinical Document Reviewer",
     description="AI-powered clinical document analysis system",
-    version="1.0.0"
+    version="1.0.0",
 )
+
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+frontend_url = os.getenv("FRONTEND_URL")
+
+if frontend_url:
+    allowed_origins.append(frontend_url.rstrip("/"))
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

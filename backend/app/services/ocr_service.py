@@ -4,6 +4,14 @@ import pytesseract
 from PIL import Image
 
 
+TESSERACT_PATH = Path(
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
+
+if TESSERACT_PATH.exists():
+    pytesseract.pytesseract.tesseract_cmd = str(TESSERACT_PATH)
+
+
 class OCRService:
     """Extracts text from clinical images using Tesseract OCR."""
 
@@ -13,7 +21,14 @@ class OCRService:
         if not path.exists():
             raise FileNotFoundError("Image file was not found.")
 
-        supported_formats = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif"}
+        supported_formats = {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".bmp",
+            ".tiff",
+            ".tif",
+        }
 
         if path.suffix.lower() not in supported_formats:
             raise ValueError("Unsupported image format.")
